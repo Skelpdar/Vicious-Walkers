@@ -2,6 +2,9 @@ import numpy as np
 from functools import reduce
 import matplotlib.pyplot as plt
 
+from LinConGenerator import LinConGenerator
+gen = LinConGenerator(12)
+
 class Walker:
     def __init__(self, pos, mass = 1):
         self.pos = pos
@@ -30,7 +33,7 @@ class Board:
 
     def newWalker(self):
         while True:
-            pos = [np.random.randint(0,self.size[k]) for k in range(0,len(self.size))]
+            pos = [gen.randInteger(0,self.size[k]) for k in range(0,len(self.size))]
             if not self.isOccupied(pos):
                 self.walkers.append(Walker(pos))
                 break
@@ -41,56 +44,74 @@ class Board:
 
     def step(self, moves):
         #Choose walker randomly (i.e. they do not all get the opportunity to move once before any other walker does it twice)
-        n = np.random.randint(0,len(self.walkers))
+        if len(self.walkers) > 0:
+            #n = np.random.randint(0,len(self.walkers))
+            n = gen.randInteger(0,len(self.walkers))
 
-        pos = self.walkers[n].pos
+            pos = self.walkers[n].pos
 
-        #Choose a move
-        move = moves[np.random.randint(0,len(moves))]
+            #Choose a move
+            move = moves[np.random.randint(0,len(moves))]
 
-        newpos = [pos[k] + move[k] for k in range(0,len(pos))]
+            newpos = [pos[k] + move[k] for k in range(0,len(pos))]
 
-        collision = self.isOccupied(newpos)
+            collision = self.isOccupied(newpos)
 
-        if collision:
-            #Remove moving walker
-            self.walkers.pop(n)
-            #Find collision target
-            for i in range(0,len(self.walkers)):
-                if self.walkers[i].pos == newpos:
-                    self.walkers.pop(i)
-                    break
-        else:
-            self.walkers[n].pos = newpos
+            if collision:
+                #Remove moving walker
+                self.walkers.pop(n)
+                #Find collision target
+                for i in range(0,len(self.walkers)):
+                    if self.walkers[i].pos == newpos:
+                        self.walkers.pop(i)
+                        break
+            else:
+                self.walkers[n].pos = newpos
 
-#Init board
-board = Board([100,100])
+iterations = 5
 
-#Init N walkers
-#N = int(np.ceil(0.001*reduce(lambda x, y: x * y, board.size, 1)))
+avgdensity = []
 
-N = 100
+for i in range(0,iterations):
+    #Init board
+    board = Board([100,100,100])
 
-for _ in range(0,N):
-    board.newWalker()
+    #Init N walkers
+    #N = int(np.ceil(0.1*reduce(lambda x, y: x * y, board.size, 1)))
 
-density = [] 
+    N = 1000
 
-steps = list(range(0,100000))
-for _ in steps:
-    board.step([[1,0],[-1,0],[0,1],[0,-1]])
-    density.append(board.density())
+    for _ in range(0,N):
+        board.newWalker()
 
-volume = reduce(lambda x, y: x * y, board.size, 1)
+    density = [] 
 
-realTime = [0]
+    steps = list(range(0,100000))
+    for _ in steps:
+        board.step([[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]])
+        density.append(board.density())
 
-for k in range(1,len(steps)):
-    realTime.append(realTime[-1] + 1/(volume*density[k]))
+    volume = reduce(lambda x, y: x * y, board.size, 1)
 
-plt.plot(realTime,density, label="Walk")
+    realTime = [0]
 
-plt.plot(realTime[20000:], [t**(-1)*np.log(t) for t in realTime[20000:]], label="Thermodynamical limit")
+    for k in range(1,len(steps)):
+        realTime.append(realTime[-1] + 1/(volume*density[k]))
+
+    plt.plot(realTime,density, color='grey')
+
+    if i == 0:
+        avgdensity = density
+    else:
+        for k in range(0,len(density)):
+            avgdensity[k] += density[k]
+
+#plt.plot(realTime[2500:], [t**(-1) for t in realTime[2500:]], label="Thermodynamical limit")
+
+plt.xlabel("t (abstract unit)")
+
+plt.ylabel("Density (# particles / volume)")  
+plt.plot(realTime, [k/iterations for k in avgdensity], label="Average of walks", linewidth=2)
 
 plt.legend()
 
